@@ -1,12 +1,12 @@
 import os
 
 # ---------- 全局配置 ----------
-API_KEY = 'AIzaSyAXH1tds1nmuLYFTRcbNU_9UEQ0brmjWtQ' #os.getenv("YOUTUBE_API_KEY") #AIzaSyAXH1tds1nmuLYFTRcbNU_9UEQ0brmjWtQ
+API_KEY = os.getenv("YOUTUBE_API_KEY") #AIzaSyAXH1tds1nmuLYFTRcbNU_9UEQ0brmjWtQ
 CHANNEL_FILE = os.getenv("CHANNEL_FILE", "channels.csv")
 HISTORY_DIR = os.getenv("HISTORY_DIR", "history")
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "10"))
 MAX_HISTORY_RECORDS = int(os.getenv("MAX_HISTORY_RECORDS", "7"))
-PROXY ='http://127.0.0.1:7897' #os.getenv("HTTP_PROXY")  # 如 http://127.0.0.1:7890
+PROXY =os.getenv("HTTP_PROXY")  # 如 http://127.0.0.1:7890
 
 # 告警配置
 ALERT_EMAIL = os.getenv("ALERT_EMAIL") #julieblue0320@gmail.com

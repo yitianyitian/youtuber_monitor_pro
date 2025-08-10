@@ -2,16 +2,16 @@ name: YouTube Monitor
 
 on:
   schedule:
-    # 每天凌晨3点收集潜力频道
-    - cron: '0 3 * * *'
+    # 每周日凌晨收集潜力频道
+    - cron: '0 0 * * 0'
       name: Collect Channels
-    # 每小时更新频道数据
-    - cron: '0 * * * *'
+    # 每天更新频道数据
+    - cron: '0 0 * * *'
       name: Update Channels
     # 每周日凌晨4点清理不活跃频道
     - cron: '0 4 * * 0'
       name: Clean Inactive
-
+  workflow_dispatch:      # 手动触发按钮
 jobs:
   collect:
     runs-on: ubuntu-latest
