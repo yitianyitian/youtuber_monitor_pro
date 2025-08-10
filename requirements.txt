@@ -1,0 +1,6 @@
+pandas
+google-api-python-client
+httplib2
+schedule
+requests
+isodate
