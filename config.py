@@ -1,7 +1,7 @@
 import os
 
 # ---------- 全局配置 ----------
-API_KEY = os.getenv("YOUTUBE_API_KEY") #AIzaSyAXH1tds1nmuLYFTRcbNU_9UEQ0brmjWtQ
+API_KEY = os.getenv("YOUTUBE_API_KEY")
 CHANNEL_FILE = os.getenv("CHANNEL_FILE", "channels.csv")
 HISTORY_DIR = os.getenv("HISTORY_DIR", "history")
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "10"))
@@ -9,8 +9,8 @@ MAX_HISTORY_RECORDS = int(os.getenv("MAX_HISTORY_RECORDS", "7"))
 PROXY =os.getenv("HTTP_PROXY")  # 如 http://127.0.0.1:7890
 
 # 告警配置
-ALERT_EMAIL = os.getenv("ALERT_EMAIL") #julieblue0320@gmail.com
-EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD") #crjqwtzsivyytfml
+ALERT_EMAIL = os.getenv("ALERT_EMAIL")
+EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
 MIN_GROWTH_RATE = float(os.getenv("MIN_GROWTH_RATE", "10"))  # 百分比阈值
 
 # 收集器配置
@@ -29,8 +29,3 @@ GROWTH_THRESHOLD = float(os.getenv("GROWTH_THRESHOLD", "0.01"))
 
 # 日志配置
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-
-print(API_KEY)
-print(ALERT_EMAIL)
-print(EMAIL_APP_PASSWORD)
-print(PROXY)
