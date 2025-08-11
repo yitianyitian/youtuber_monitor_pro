@@ -11,6 +11,20 @@ from config import (CHANNEL_FILE,HISTORY_DIR,SEARCH_KEYWORDS, COLLECT_DAYS, MIN_
 from utils import youtube, ensure_dirs, logger, parse_channel_id, read_channel_list, write_atomic_csv
 from utils import retry, append_history, save_keyword_score, get_channel_history
 
+# ==== 新增：API 配额统计 ====
+API_QUOTA_LIMIT = 10000       # 每日总配额
+API_QUOTA_SAFE_LIMIT = 9000   # 安全阈值，超出则停止
+quota_used = 0
+
+def add_quota(cost):
+    """累加配额消耗并检测是否超限"""
+    global quota_used
+    quota_used += cost
+    logger.info(f"当前已用配额: {quota_used}/{API_QUOTA_LIMIT}")
+    if quota_used >= API_QUOTA_SAFE_LIMIT:
+        logger.warning("API配额接近上限，停止后续请求")
+        raise StopIteration("API quota limit reached")
+
 # 获取视频统计数据（带缓存）
 def get_video_stats_cached(channel_id: str):
     from datetime import datetime, timedelta
@@ -34,6 +48,7 @@ def get_video_stats_cached(channel_id: str):
     # 缓存不存在或过期 → 重新查询
     try:
         # 获取频道信息
+        add_quota(1)  # channels.list 每频道1
         resp = youtube.channels().list(
             part="contentDetails,statistics", 
             id=channel_id
@@ -50,6 +65,7 @@ def get_video_stats_cached(channel_id: str):
         videos = []
         next_page_token = None
         while len(videos) < 20:  # 最多获取20个视频
+            add_quota(1)  # playlistItems.list 每次调用固定1
             req = youtube.playlistItems().list(
                 part="contentDetails",
                 playlistId=playlist_id,
@@ -67,6 +83,7 @@ def get_video_stats_cached(channel_id: str):
         view_counts = []
         for i in range(0, len(videos), 50):
             batch_ids = videos[i:i+50]
+            add_quota(len(batch_ids))  # videos.list 每视频1
             resp = youtube.videos().list(
                 part="statistics",
                 id=",".join(batch_ids)
@@ -118,6 +135,7 @@ def collect_potential_channels():
         next_page_token = None
         try:
             while len(videos) < RESULT_LIMIT:
+                add_quota(100)  # search.list 每次调用100
                 request = youtube.search().list(
                     part="id,snippet",
                     q=kw,
@@ -148,6 +166,8 @@ def collect_potential_channels():
             else:
                 logger.warning(f"搜索视频失败: {e}")
                 continue
+        except StopIteration:
+            break
 
         total_videos = len(videos)
         logger.info(f"[{kw}] 搜索到 {total_videos} 个视频")
@@ -157,6 +177,7 @@ def collect_potential_channels():
         for i in range(0, len(videos), 50):
             batch_ids = [v["videoId"] for v in videos[i:i+50]]
             try:
+                add_quota(len(batch_ids))  # videos.list 每视频1
                 resp = youtube.videos().list(
                     part="contentDetails", 
                     id=",".join(batch_ids)
@@ -182,6 +203,7 @@ def collect_potential_channels():
         for i in range(0, len(channel_ids), 50):
             batch_ids = channel_ids[i:i+50]
             try:
+                add_quota(len(batch_ids))  # channels.list 每频道1
                 resp = youtube.channels().list(
                     part="snippet,statistics", 
                     id=",".join(batch_ids)

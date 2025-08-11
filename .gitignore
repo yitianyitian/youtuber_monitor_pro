@@ -1,2 +1,4 @@
 .env
 debug_collect.py
+__pycache__
+history/video_cache
