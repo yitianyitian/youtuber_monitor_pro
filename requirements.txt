@@ -4,3 +4,4 @@ httplib2
 schedule
 requests
 isodate
+chardet
