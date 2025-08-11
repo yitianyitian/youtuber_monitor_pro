@@ -23,7 +23,6 @@ def add_quota(cost):
     logger.info(f"当前已用配额: {quota_used}/{API_QUOTA_LIMIT}")
     if quota_used >= API_QUOTA_SAFE_LIMIT:
         logger.warning("API配额接近上限，停止后续请求")
-        raise StopIteration("API quota limit reached")
 
 # 获取视频统计数据（带缓存）
 def get_video_stats_cached(channel_id: str):
