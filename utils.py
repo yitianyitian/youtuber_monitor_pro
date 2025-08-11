@@ -3,7 +3,8 @@ import time
 import random
 import logging
 import functools
-from httplib2 import ProxyInfo, Http,socks
+import chardet
+from httplib2 import ProxyInfo, Http, socks
 import pandas as pd
 from datetime import datetime, timedelta
 from googleapiclient.discovery import build
@@ -62,7 +63,7 @@ def ensure_dirs():
 
 def write_atomic_csv(path: str, df):
     tmp = f"{path}.tmp"
-    df.to_csv(tmp, index=False)
+    df.to_csv(tmp, index=False, encoding='utf-8')
     os.replace(tmp, path)
 
 # ---------- 频道ID解析 ----------
@@ -86,18 +87,59 @@ def parse_channel_id(youtube_url: str) -> str:
         return items[0]["snippet"]["channelId"]
     return url
 
+# ========== 编码检测函数 ==========
+def detect_encoding(file_path):
+    """自动检测文件编码"""
+    try:
+        with open(file_path, 'rb') as f:
+            rawdata = f.read(10000)
+        result = chardet.detect(rawdata)
+        return result['encoding'] or 'utf-8'
+    except Exception as e:
+        logger.warning(f"编码检测失败: {e}")
+        return 'utf-8'
+
+# ========== 安全的CSV读取函数 ==========
+def safe_read_csv(file_path: str, dtype=None):
+    """安全读取CSV文件，自动处理编码问题"""
+    if not os.path.exists(file_path):
+        return pd.DataFrame()
+    
+    detected_encoding = detect_encoding(file_path)
+    logger.debug(f"检测到文件编码: {detected_encoding} for {file_path}")
+    
+    try:
+        return pd.read_csv(file_path, encoding=detected_encoding, dtype=dtype)
+    except UnicodeDecodeError:
+        try:
+            return pd.read_csv(file_path, encoding='latin1', dtype=dtype)
+        except:
+            logger.warning(f"使用错误恢复模式读取文件: {file_path}")
+            return pd.read_csv(file_path, encoding='utf-8', errors='replace', dtype=dtype)
+
 # ---------- 频道列表操作 ----------
 def read_channel_list(path: str):
     if not os.path.exists(path):
         raise FileNotFoundError(f"{path} not found")
-    df = pd.read_csv(path, dtype={"id": str})
+    
+    # 使用统一的读取函数
+    df = safe_read_csv(path, dtype={"id": str})
+    
+    # 如果读取失败，创建空DataFrame
+    if df.empty:
+        df = pd.DataFrame(columns=["name", "url", "id", "current_subs", "last_subs"])
+    
+    # 确保必要的列存在
     for col in ["name", "url"]:
         if col not in df.columns:
             raise ValueError(f"channels.csv 必须包含列: {col}")
+    
+    # 初始化缺失的列
     if "current_subs" not in df.columns:
         df["current_subs"] = 0
     if "last_subs" not in df.columns:
         df["last_subs"] = 0
+    
     return df
 
 # ---------- 历史记录操作 ----------
@@ -105,13 +147,11 @@ def append_history(channel_id: str, record_date: str, subs: int):
     ensure_dirs()
     history_file = os.path.join(HISTORY_DIR, f"{channel_id}.csv")
     
-    # 读取现有历史记录
-    if os.path.exists(history_file):
-        try:
-            history_df = pd.read_csv(history_file)
-        except:
-            history_df = pd.DataFrame(columns=["date", "subscribers"])
-    else:
+    # 使用统一的读取函数
+    history_df = safe_read_csv(history_file)
+    
+    # 如果是空DataFrame，则创建新结构
+    if history_df.empty:
         history_df = pd.DataFrame(columns=["date", "subscribers"])
     
     # 添加新记录
@@ -124,15 +164,18 @@ def append_history(channel_id: str, record_date: str, subs: int):
     history_df = history_df.head(MAX_HISTORY_RECORDS)
     history_df = history_df.sort_values("date")
     
-    # 保存
-    history_df.to_csv(history_file, index=False)
+    # 保存文件
+    history_df.to_csv(history_file, index=False, encoding='utf-8')
 
 def get_channel_history(channel_id: str, limit: int = None):
     history_file = os.path.join(HISTORY_DIR, f"{channel_id}.csv")
-    if not os.path.exists(history_file):
+    
+    # 使用统一的读取函数
+    df = safe_read_csv(history_file)
+    
+    if df.empty:
         return pd.DataFrame(columns=["date", "subscribers"])
     
-    df = pd.read_csv(history_file)
     if limit:
         return df.tail(limit)
     return df
