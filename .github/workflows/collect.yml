@@ -28,3 +28,15 @@ jobs:
         YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         SEARCH_KEYWORDS: ${{ secrets.SEARCH_KEYWORDS }}
       run: python collect.py
+
+    
+    - name: Commit updated files
+        env:
+          REPO: "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git remote set-url origin $REPO
+          git add channels.csv history/
+          git diff-index --quiet HEAD || git commit -m "Update data [skip ci]"
+          git push
