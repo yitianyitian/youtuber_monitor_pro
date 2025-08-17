@@ -193,3 +193,29 @@ def save_keyword_score(keyword: str, total_videos: int, long_videos: int,
     with open(score_path, "a", encoding="utf-8") as f:
         date_str = datetime.utcnow().strftime("%Y-%m-%d")
         f.write(f"{date_str},{keyword},{total_videos},{long_videos},{total_channels},{potential_channels},{hot_rate}\n")
+
+
+
+def deduplicate_csv(input_file: str, output_file: str, column_name: str, keep: str = "first"):
+    """
+    按某一列去重并保存新文件 (CSV)
+    """
+    # 尝试不同编码读取
+    encodings = ["utf-8", "utf-8-sig", "gbk", "latin1"]
+    for enc in encodings:
+        try:
+            df = pd.read_csv(input_file, encoding=enc)
+            print(f"成功使用编码 {enc} 读取文件")
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        raise ValueError("无法识别文件编码，请手动检查")
+
+    # 按指定列去重
+    df_unique = df.drop_duplicates(subset=[column_name], keep=keep)
+
+    # 保存新文件（用 utf-8-sig 确保 Excel 打开不乱码）
+    df_unique.to_csv(output_file, index=False, encoding="utf-8-sig")
+
+    print(f"去重完成，共 {len(df_unique)} 条记录，已保存至 {output_file}")

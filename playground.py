@@ -154,7 +154,8 @@ def main():
         period = get_8am_timestamp(1)
         # 活跃的国家或地区
         countries=["AR","AU","AT","BE","BR","CA","CL","CN","CO","CZ","DK","EG","FR","DE","HK","HU","IN","ID","IE","IL","IT","JP","KZ","KR",
-                   "MY","MX","MA","NP","NL","NZ","NG","NO","PE","PH","PL","PT","RO","RU","SA","SG","ZA","ES","SE","CH","TW","TH","TR","UA"]
+                   "MY","MX","MA","NP","NL","NZ","NG","NO","PE","PH","PL","PT","RO","RU","SA","SG","ZA","ES","SE","CH","TW","TH","TR","UA",
+                   "US","GB"]
         for country in countries:
           config = FetchConfig(
               period=period,
