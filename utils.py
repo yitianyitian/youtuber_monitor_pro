@@ -1,5 +1,6 @@
 import os
 import time
+import csv
 import random
 import logging
 import functools
@@ -8,6 +9,7 @@ from httplib2 import ProxyInfo, Http, socks
 import pandas as pd
 from datetime import datetime, timedelta
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from config import API_KEY, PROXY, REQUEST_TIMEOUT, HISTORY_DIR, MAX_HISTORY_RECORDS,LOG_LEVEL
 
 # 初始化日志
@@ -219,3 +221,122 @@ def deduplicate_csv(input_file: str, output_file: str, column_name: str, keep: s
     df_unique.to_csv(output_file, index=False, encoding="utf-8-sig")
 
     print(f"去重完成，共 {len(df_unique)} 条记录，已保存至 {output_file}")
+
+
+# ---------- 新增：短视频检测函数 ----------
+@retry(Exception, tries=3, delay=1, backoff=2)
+def is_short_video_channel(channel_id: str, max_duration: int = 60) -> bool:
+    """
+    检测频道是否为短视频频道
+    :param channel_id: YouTube频道ID
+    :param max_duration: 短视频最大时长（秒）
+    :return: 是否为短视频频道
+    """
+    try:
+        # 获取频道最新视频
+        resp = youtube.search().list(
+            part="snippet",
+            channelId=channel_id,
+            maxResults=5,  # 检查最近5个视频
+            order="date",
+            type="video"
+        ).execute()
+        
+        video_ids = [item["id"]["videoId"] for item in resp.get("items", []) if "videoId" in item["id"]]
+        
+        if not video_ids:
+            return False
+            
+        # 获取视频详情
+        video_resp = youtube.videos().list(
+            part="contentDetails",
+            id=",".join(video_ids)
+        ).execute()
+        
+        # 检查视频时长
+        short_video_count = 0
+        for item in video_resp.get("items", []):
+            duration = item["contentDetails"]["duration"]
+            # 解析ISO 8601时长格式
+            if duration.startswith("PT"):
+                time_str = duration[2:]
+                minutes = 0
+                seconds = 0
+                
+                if "M" in time_str:
+                    minutes = int(time_str.split("M")[0])
+                    time_str = time_str.split("M")[1] if "M" in time_str else time_str
+                if "S" in time_str:
+                    seconds = int(time_str.split("S")[0])
+                
+                total_seconds = minutes * 60 + seconds
+                if total_seconds <= max_duration:
+                    short_video_count += 1
+        
+        # 如果大多数视频都是短视频，则标记为短视频频道
+        return short_video_count >= 3  # 5个中有3个以上是短视频
+    except HttpError as e:
+        if e.resp.status == 403:
+            logger.error("API配额耗尽或密钥无效")
+        else:
+            logger.warning(f"API 获取视频信息失败: {channel_id} - {e}")
+        return False
+    except Exception as e:
+        logger.warning(f"检测短视频频道失败: {channel_id} - {e}")
+        return False
+
+# ---------- 新增：频道数据写入函数 ----------
+def append_channel_to_csv(channel_data, csv_file="channel.csv"):
+    """
+    将频道数据追加到CSV文件，并确保不重复添加相同频道
+    :param channel_data: 字典，包含频道信息
+    :param csv_file: CSV文件路径
+    """
+    ensure_dirs()
+    
+    # 检查文件是否存在，决定是否写入表头
+    file_exists = os.path.isfile(csv_file)
+    
+    # 如果文件存在，检查是否已存在相同频道
+    if file_exists:
+        try:
+            # 读取现有数据
+            existing_df = safe_read_csv(csv_file)
+            
+            # 检查是否已存在相同ID的频道
+            channel_id = channel_data.get("id")
+            if channel_id and not existing_df.empty and "id" in existing_df.columns:
+                if channel_id in existing_df["id"].values:
+                    logger.info(f"频道已存在，跳过: {channel_data.get('name', '未知')} ({channel_id})")
+                    return
+        except Exception as e:
+            logger.warning(f"读取现有频道文件失败: {e}")
+    
+    # 确保所有必需的列都存在
+    required_columns = ["url", "name", "id", "current_subs", "last_subs", 
+                       "growth", "growth_rate", "update_time", "short_video"]
+    
+    # 为缺失的列提供默认值
+    for col in required_columns:
+        if col not in channel_data:
+            if col == "short_video":
+                channel_data[col] = False
+            elif col in ["current_subs", "last_subs", "growth"]:
+                channel_data[col] = 0
+            elif col == "growth_rate":
+                channel_data[col] = 0.0
+            elif col == "update_time":
+                channel_data[col] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                channel_data[col] = ""
+    
+    with open(csv_file, "a", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=required_columns)
+        
+        if not file_exists:
+            writer.writeheader()
+        
+        writer.writerow(channel_data)
+    
+    logger.info(f"已添加频道到 {csv_file}: {channel_data.get('name', '未知')}")
+

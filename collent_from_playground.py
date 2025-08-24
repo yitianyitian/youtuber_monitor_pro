@@ -1,10 +1,14 @@
 import requests
 import time
 import csv
+import os
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from dataclasses import dataclass
 from datetime import datetime, date, time as dtime, timedelta
+
+# 新增导入
+from utils import is_short_video_channel, append_channel_to_csv
 
 from countries import countries_dict
 
@@ -108,15 +112,40 @@ def fetch_country(country: str, writer: csv.DictWriter, config: FetchConfig, max
                 ch = item.get("channel", {})
                 channelId = ch.get("channelId")
                 subscriberCount=ch.get("subscriberCount")
-                row = {
-                    "country": country,
-                    "channel_id": channelId,
-                    "channel_url": f"https://www.youtube.com/channel/{channelId}",
-                    "title": ch.get("name"),
-                    "subscribers": subscriberCount,
-                }
-                if subscriberCount<=300000:
-                  writer.writerow(row)
+                
+                # 只处理订阅数小于30万的频道
+                if subscriberCount <= 300000:
+                    row = {
+                        "country": country,
+                        "channel_id": channelId,
+                        "channel_url": f"https://www.youtube.com/channel/{channelId}",
+                        "title": ch.get("name"),
+                        "subscribers": subscriberCount,
+                    }
+                    writer.writerow(row)
+                    
+                    # 检测是否为短视频频道
+                    is_short = is_short_video_channel(channelId)
+                    print(f"{ch.get('name')} ({channelId}): 短视频频道 - {is_short}")
+                    
+                    # 准备写入 channel.csv 的数据
+                    channel_data = {
+                        "url": f"https://www.youtube.com/channel/{channelId}",
+                        "name": ch.get("name"),
+                        "id": channelId,
+                        "current_subs": subscriberCount,
+                        "last_subs": 0,
+                        "growth": 0,
+                        "growth_rate": 0,
+                        "update_time": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+                        "short_video": is_short
+                    }
+                    
+                    # 写入 channel.csv
+                    append_channel_to_csv(channel_data)
+                    
+                    # 避免请求过快
+                    time.sleep(1.2)
 
             print(f"[OK] {country} Page {page} - {len(items)} channels")
 
@@ -142,7 +171,7 @@ def fetch_country(country: str, writer: csv.DictWriter, config: FetchConfig, max
         time.sleep(10)
 
 
-def main():
+def collent_from_playground():
     # 打开 CSV 文件，实时写入
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=[
@@ -172,7 +201,3 @@ def main():
 
     print(f"\n✅ 完成采集，结果已保存到 {OUTPUT_FILE}")
     print(f"⚠️ 如果有错误，请查看 {ERROR_LOG}")
-
-
-if __name__ == "__main__":
-    main()

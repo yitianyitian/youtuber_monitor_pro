@@ -29,3 +29,7 @@ GROWTH_THRESHOLD = float(os.getenv("GROWTH_THRESHOLD", "0.01"))
 
 # 日志配置
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+# 添加短视频过滤配置
+FILTER_SHORT_VIDEOS = True  # 是否过滤短视频频道
+SHORT_VIDEO_MAX_DURATION = 60  # 短视频最大时长（秒）

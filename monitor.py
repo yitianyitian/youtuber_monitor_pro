@@ -3,7 +3,7 @@ import time
 import pandas as pd
 from datetime import datetime
 from googleapiclient.errors import HttpError
-from config import CHANNEL_FILE,HISTORY_DIR, MIN_GROWTH_RATE, MIN_INACTIVE_DAYS, GROWTH_THRESHOLD
+from config import CHANNEL_FILE,HISTORY_DIR, MIN_GROWTH_RATE, MIN_INACTIVE_DAYS, GROWTH_THRESHOLD, FILTER_SHORT_VIDEOS
 from utils import youtube, read_channel_list, write_atomic_csv, parse_channel_id, logger
 from utils import retry, append_history, get_channel_history
 from notifier import send_alert
@@ -32,6 +32,9 @@ def get_subs_via_api(channel_id: str) -> int:
 def update_channel_data():
     try:
         df = read_channel_list(CHANNEL_FILE)
+        # 确保有short_video列
+        if "short_video" not in df.columns:
+            df["short_video"] = False
     except FileNotFoundError:
         logger.error("频道列表文件不存在，请先运行收集器")
         return
@@ -41,6 +44,11 @@ def update_channel_data():
         url = str(row["url"])
         name = row.get("name", url)
         channel_id = row.get("id")
+        
+        # 如果启用短视频过滤且该频道是短视频频道，跳过更新
+        if FILTER_SHORT_VIDEOS and row.get("short_video", False):
+            logger.info(f"跳过短视频频道: {name}")
+            continue
         
         # 如果缺少channel_id，尝试解析
         if not channel_id or pd.isna(channel_id):
@@ -92,12 +100,19 @@ def update_channel_data():
 def remove_inactive_channels():
     try:
         df = read_channel_list(CHANNEL_FILE)
+        # 确保有short_video列
+        if "short_video" not in df.columns:
+            df["short_video"] = False
     except FileNotFoundError:
         logger.error("频道列表文件不存在")
         return
     
     remove_ids = []
     for idx, row in df.iterrows():
+        # 跳过短视频频道（如果启用过滤）
+        if FILTER_SHORT_VIDEOS and row.get("short_video", False):
+            continue
+            
         cid = row.get("id")
         if not cid or pd.isna(cid):
             continue
