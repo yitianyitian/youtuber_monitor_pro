@@ -37,7 +37,7 @@ def create_http_client():
         return Http(timeout=REQUEST_TIMEOUT)
 
 http = create_http_client()
-youtube = build("youtube", "v3", developerKey=API_KEY, http=http)
+youtube = build("youtube", "v3", developerKey=API_KEY, http=http,cache_discovery=False)
 
 # ---------- 重试装饰器 ----------
 def retry(ExceptionToCheck=Exception, tries=3, delay=1, backoff=2):
@@ -243,7 +243,7 @@ def is_short_video_channel(channel_id: str, max_duration: int = 60) -> bool:
         ).execute()
         
         video_ids = [item["id"]["videoId"] for item in resp.get("items", []) if "videoId" in item["id"]]
-        
+
         if not video_ids:
             return False
             
@@ -286,7 +286,7 @@ def is_short_video_channel(channel_id: str, max_duration: int = 60) -> bool:
         return False
 
 # ---------- 新增：频道数据写入函数 ----------
-def append_channel_to_csv(channel_data, csv_file="channel.csv"):
+def append_channel_to_csv(channel_data, csv_file="channels.csv"):
     """
     将频道数据追加到CSV文件，并确保不重复添加相同频道
     :param channel_data: 字典，包含频道信息
@@ -339,4 +339,76 @@ def append_channel_to_csv(channel_data, csv_file="channel.csv"):
         writer.writerow(channel_data)
     
     logger.info(f"已添加频道到 {csv_file}: {channel_data.get('name', '未知')}")
+
+
+@retry(Exception, tries=3, delay=1, backoff=2)
+def is_short_video_channel_from_playboard(item_data: dict, max_duration: int = 180) -> bool:
+    """
+    使用Playboard返回的视频ID通过YouTube API检测短视频频道
+    :param item_data: Playboard返回的单个频道完整数据
+    :param max_duration: 短视频最大时长（秒），默认3分钟
+    :return: 是否为短视频频道
+    """
+    try:
+        # 从Playboard数据中提取视频ID
+        videos = item_data.get("videos", [])
+        if not videos:
+            return False
+            
+        video_ids = [video.get("videoId") for video in videos if video.get("videoId")]
+        if not video_ids:
+            return False
+            
+        # 获取视频详情
+        video_resp = youtube.videos().list(
+            part="contentDetails",
+            id=",".join(video_ids)
+        ).execute()
+        
+        # 检查视频时长
+        short_video_count = 0
+        for item in video_resp.get("items", []):
+            duration = item["contentDetails"]["duration"]
+            # 解析ISO 8601时长格式
+            total_seconds = parse_duration_to_seconds(duration)
+            if total_seconds <= max_duration:
+                short_video_count += 1
+        
+        # 如果至少有一个视频是短视频，则标记为短视频频道
+        return short_video_count >= 1
+        
+    except HttpError as e:
+        if e.resp.status == 403:
+            logger.error("API配额耗尽或密钥无效")
+        else:
+            logger.warning(f"API 获取视频信息失败: {e}")
+        return False
+    except Exception as e:
+        logger.warning(f"检测短视频频道失败: {e}")
+        return False
+
+def parse_duration_to_seconds(duration: str) -> int:
+    """
+    将ISO 8601时长格式转换为秒数
+    :param duration: ISO 8601格式的时长字符串
+    :return: 总秒数
+    """
+    if not duration.startswith("PT"):
+        return 0
+        
+    time_str = duration[2:]
+    hours = 0
+    minutes = 0
+    seconds = 0
+    
+    if "H" in time_str:
+        hours = int(time_str.split("H")[0])
+        time_str = time_str.split("H")[1] if "H" in time_str else ""
+    if "M" in time_str:
+        minutes = int(time_str.split("M")[0])
+        time_str = time_str.split("M")[1] if "M" in time_str else ""
+    if "S" in time_str:
+        seconds = int(time_str.split("S")[0])
+    
+    return hours * 3600 + minutes * 60 + seconds
 

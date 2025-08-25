@@ -1,5 +1,10 @@
 import os
 
+from dotenv import load_dotenv
+
+# 加载 .env 文件（如果存在）
+load_dotenv()
+
 # ---------- 全局配置 ----------
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 CHANNEL_FILE = os.getenv("CHANNEL_FILE", "channels.csv")

@@ -6,9 +6,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from dataclasses import dataclass
 from datetime import datetime, date, time as dtime, timedelta
+from config import PROXY
 
 # 新增导入
-from utils import is_short_video_channel, append_channel_to_csv
+from utils import is_short_video_channel, append_channel_to_csv,is_short_video_channel_from_playboard
 
 from countries import countries_dict
 
@@ -24,10 +25,11 @@ HEADERS = {
 
 # 可选代理（如果不用代理，设为 None）
 PROXIES = None
-PROXIES = {
-    "http": "http://127.0.0.1:7897",
-    "https": "http://127.0.0.1:7897",
-}
+if PROXY:
+  PROXIES = {
+      "http": PROXY,
+      "https": PROXY,
+  }
 
 # 错误日志文件
 ERROR_LOG = "errors.log"
@@ -124,9 +126,14 @@ def fetch_country(country: str, writer: csv.DictWriter, config: FetchConfig, max
                     }
                     writer.writerow(row)
                     
-                    # 检测是否为短视频频道
-                    is_short = is_short_video_channel(channelId)
+                    # 检测是否为短视频频道,search.list()大量消耗配额，一次至多只能检测95个频道，弃用
+                    # is_short = is_short_video_channel(channelId)
+                    # print(f"{ch.get('name')} ({channelId}): 短视频频道 - {is_short}")
+
+                    # 使用Playboard提供的视频ID进行检测
+                    is_short = is_short_video_channel_from_playboard(item, max_duration=180)
                     print(f"{ch.get('name')} ({channelId}): 短视频频道 - {is_short}")
+        
                     
                     # 准备写入 channel.csv 的数据
                     channel_data = {
