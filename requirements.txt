@@ -5,3 +5,4 @@ schedule
 requests
 isodate
 chardet
+dotenv
