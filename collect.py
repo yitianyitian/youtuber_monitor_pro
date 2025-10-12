@@ -2,15 +2,16 @@
 """收集潜力频道入口"""
 from utils import ensure_dirs, logger
 from collector import collect_potential_channels
-from collent_from_playground import collent_from_playground
+from collect_from_playground import collect_from_playground
 
 if __name__ == "__main__":
     ensure_dirs()
     try:
         logger.info("开始收集潜力频道")
+        
         #collect_potential_channels()
         #直接使用playground的数据
-        collent_from_playground()
+        collect_from_playground()
         logger.info("潜力频道收集完成")
     except StopIteration as e:
         logger.warning(str(e))

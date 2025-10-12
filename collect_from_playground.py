@@ -178,7 +178,7 @@ def fetch_country(country: str, writer: csv.DictWriter, config: FetchConfig, max
         time.sleep(10)
 
 
-def collent_from_playground():
+def collect_from_playground():
     # 打开 CSV 文件，实时写入
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=[
