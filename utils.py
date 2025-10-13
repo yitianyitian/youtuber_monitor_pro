@@ -353,7 +353,7 @@ def is_short_video_channel_from_playboard(item_data: dict, max_duration: int = 1
         # 从Playboard数据中提取视频ID
         videos = item_data.get("videos", [])
         if not videos:
-            return False
+            return True
             
         video_ids = [video.get("videoId") for video in videos if video.get("videoId")]
         if not video_ids:
