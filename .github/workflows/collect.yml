@@ -1,8 +1,8 @@
 name: Collect Channels
 
 on:
-  # schedule:
-  #   - cron: '0 0 * * 0'
+  schedule:
+    - cron: '0 0 * * 0' #每周日的凌晨00:00（午夜）执行一次
   workflow_dispatch:
 
 jobs:
@@ -39,6 +39,6 @@ jobs:
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git remote set-url origin $REPO
-        git add channels.csv history/
+        git add collect_channels.csv monitor_channels.csv history/
         git diff-index --quiet HEAD || git commit -m "Update data [skip ci]"
         git push

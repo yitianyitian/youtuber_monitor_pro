@@ -6,12 +6,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from dataclasses import dataclass
 from datetime import datetime, date, time as dtime, timedelta
-from config import PROXY
+from config import PROXY,COLLECT_FILE
 
 # 新增导入
-from utils import is_short_video_channel, append_channel_to_csv,is_short_video_channel_from_playboard
-
-from countries import countries_dict
+from utils import is_short_video_channel, append_channel_to_csv,is_short_video_channel_from_playboard,add_to_monitor_if_long_video
 
 # Playboard API 基础地址
 BASE_URL = "https://lapi.playboard.co/v1/chart/channel"
@@ -33,8 +31,6 @@ if PROXY:
 
 # 错误日志文件
 ERROR_LOG = "errors.log"
-# 输出数据文件
-OUTPUT_FILE = "playboard_channels.csv"
 
 # 创建一个带自动重试的 Session
 def create_session():
@@ -78,7 +74,7 @@ class FetchConfig:
     indexTarget: int
 
 
-def fetch_country(country: str, writer: csv.DictWriter, config: FetchConfig, max_pages=3):
+def fetch_by_country(country: str, config: FetchConfig, max_pages=3):
     """抓取某个国家的排行榜前若干页"""
     cursor = None
     page = 1
@@ -124,7 +120,6 @@ def fetch_country(country: str, writer: csv.DictWriter, config: FetchConfig, max
                         "title": ch.get("name"),
                         "subscribers": subscriberCount,
                     }
-                    writer.writerow(row)
                     
                     # 检测是否为短视频频道,search.list()大量消耗配额，一次至多只能检测95个频道，弃用
                     # is_short = is_short_video_channel(channelId)
@@ -133,7 +128,6 @@ def fetch_country(country: str, writer: csv.DictWriter, config: FetchConfig, max
                     # 使用Playboard提供的视频ID进行检测
                     is_short = is_short_video_channel_from_playboard(item, max_duration=180)
                     print(f"{ch.get('name')} ({channelId}): 短视频频道 - {is_short}")
-        
                     
                     # 准备写入 channel.csv 的数据
                     channel_data = {
@@ -148,8 +142,12 @@ def fetch_country(country: str, writer: csv.DictWriter, config: FetchConfig, max
                         "short_video": is_short
                     }
                     
-                    # 写入 channel.csv
-                    append_channel_to_csv(channel_data)
+                    # 1. 总是添加到收藏列表
+                    append_channel_to_csv(channel_data, csv_file=COLLECT_FILE)
+                    
+                    # 2. 如果是长视频，则添加到监控列表
+                    if not is_short:
+                        add_to_monitor_if_long_video(channel_data)
                     
                     # 避免请求过快
                     time.sleep(1.2)
@@ -178,21 +176,34 @@ def fetch_country(country: str, writer: csv.DictWriter, config: FetchConfig, max
         time.sleep(10)
 
 
-def collect_from_playground():
-    # 打开 CSV 文件，实时写入
-    with open(OUTPUT_FILE, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            "country", "channel_id", "channel_url", "title", "subscribers"
-        ])
-        writer.writeheader()
 
-        # 昨日 8 点作为 period
+def get_country_config():
+    """
+    基于YouTube频道密度和增长潜力的国家配置
+    """
+    return {
+        # 一级市场：高密度+高增长，拉取3页
+        "US": (3, 3), "BR": (3, 3), "IN": (3, 3), "MX": (3, 3), 
+        "JP": (3, 3), "KR": (3, 3), "GB": (3, 3), "DE": (3, 3),
+        
+        # 二级市场：中等密度，拉取2页
+        "FR": (2, 2), "ES": (2, 2), "IT": (2, 2), "ID": (2, 2),
+        "PH": (2, 2), "TH": (2, 2), "TR": (2, 2), "PL": (2, 2),
+        "AR": (2, 2), "CO": (2, 2), "CL": (2, 2), "PE": (2, 2),
+        
+        # 三级市场：低密度但有潜力，拉取1页
+        "NL": (1, 1), "SE": (1, 1), "AU": (1, 1), "CA": (1, 1),
+        "ZA": (1, 1), "MY": (1, 1), "SG": (1, 1), "AE": (1, 1),
+        "VN": (1, 1), "EG": (1, 1), "SA": (1, 1)
+    }
+
+
+def collect_from_playground():
+   # 昨日 8 点作为 period
         period = get_8am_timestamp(1)
-        # 活跃的国家或地区
-        countries=["AR","AU","AT","BE","BR","CA","CL","CN","CO","CZ","DK","EG","FR","DE","HK","HU","IN","ID","IE","IL","IT","JP","KZ","KR",
-                   "MY","MX","MA","NP","NL","NZ","NG","NO","PE","PH","PL","PT","RO","RU","SA","SG","ZA","ES","SE","CH","TW","TH","TR","UA",
-                   "US","GB"]
-        for country in countries:
+        
+        country_config = get_country_config()
+        for country, (weight, pages) in country_config.items():
           config = FetchConfig(
               period=period,
               periodTypeId=2, #Daily
@@ -201,10 +212,5 @@ def collect_from_playground():
               indexTarget=country
           )
 
-          # 采集 US 前 5 页
-          fetch_country(country, writer, config, max_pages=2)
-          print(country)
-          time.sleep(20)
-
-    print(f"\n✅ 完成采集，结果已保存到 {OUTPUT_FILE}")
-    print(f"⚠️ 如果有错误，请查看 {ERROR_LOG}")
+          fetch_by_country(country, config, max_pages=pages)
+          time.sleep(15 if weight == 3 else 10)  # 根据权重调整间隔

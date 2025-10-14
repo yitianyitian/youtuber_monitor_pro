@@ -7,7 +7,6 @@ load_dotenv()
 
 # ---------- 全局配置 ----------
 API_KEY = os.getenv("YOUTUBE_API_KEY")
-CHANNEL_FILE = os.getenv("CHANNEL_FILE", "channels.csv")
 HISTORY_DIR = os.getenv("HISTORY_DIR", "history")
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "10"))
 MAX_HISTORY_RECORDS = int(os.getenv("MAX_HISTORY_RECORDS", "7"))
@@ -29,7 +28,7 @@ MIN_HOT_RATIO = float(os.getenv("MIN_HOT_RATIO", "0.2"))
 CACHE_DAYS = int(os.getenv("CACHE_DAYS", "3"))
 
 # 不活跃频道配置
-MIN_INACTIVE_DAYS = int(os.getenv("MIN_INACTIVE_DAYS", "7"))
+MIN_INACTIVE_DAYS = int(os.getenv("MIN_INACTIVE_DAYS", "30"))
 GROWTH_THRESHOLD = float(os.getenv("GROWTH_THRESHOLD", "0.01"))
 
 # 日志配置
@@ -38,3 +37,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 # 添加短视频过滤配置
 FILTER_SHORT_VIDEOS = True  # 是否过滤短视频频道
 SHORT_VIDEO_MAX_DURATION = 60  # 短视频最大时长（秒）
+
+# 在config.py中添加
+COLLECT_FILE = os.getenv("COLLECT_FILE", "collect_channels.csv")  # 收藏列表（所有频道）
+MONITOR_FILE = os.getenv("MONITOR_FILE", "monitor_channels.csv")  # 监控列表（仅长视频）

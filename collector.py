@@ -6,7 +6,7 @@ import pandas as pd
 import isodate
 from googleapiclient.errors import HttpError
 from datetime import datetime, timedelta
-from config import (CHANNEL_FILE, HISTORY_DIR, SEARCH_KEYWORDS, COLLECT_DAYS, MIN_SUBS, MAX_SUBS, RESULT_LIMIT,
+from config import (COLLECT_FILE, HISTORY_DIR, SEARCH_KEYWORDS, COLLECT_DAYS, MIN_SUBS, MAX_SUBS, RESULT_LIMIT,
                    MIN_VIEW_SUB_RATIO, MIN_HOT_RATIO, CACHE_DAYS)
 from utils import youtube, ensure_dirs, logger, parse_channel_id, read_channel_list, write_atomic_csv
 from utils import retry, append_history, save_keyword_score, get_channel_history
@@ -237,7 +237,7 @@ def collect_potential_channels():
         logger.warning("没有符合条件的频道")
         return
     try:
-        df = read_channel_list(CHANNEL_FILE)
+        df = read_channel_list(COLLECT_FILE)
     except FileNotFoundError:
         df = pd.DataFrame(columns=["name", "url", "id", "current_subs", "last_subs"])
 
@@ -258,7 +258,7 @@ def collect_potential_channels():
             added_count += 1
 
     if added_count > 0:
-        write_atomic_csv(CHANNEL_FILE, df)
+        write_atomic_csv(COLLECT_FILE, df)
         logger.info(f"潜力频道收集完成，新增 {added_count} 个频道，当前监控总数: {len(df)}")
     else:
         logger.info("未发现新的潜力频道")

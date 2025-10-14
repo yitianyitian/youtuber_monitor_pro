@@ -1,13 +1,13 @@
-# clean.yml 修改后
-name: Clean Inactive Channels
+# monthly_report.yml
+name: Monthly Report
 
 on:
   schedule:
-    - cron: '0 12 2 * *' # 每月2日中午12:00执行，确保在月度报告之后
-  workflow_dispatch:
+    - cron: '0 8 1 * *'  # 每月1日上午8点 UTC
+  workflow_dispatch:  # 允许手动触发
 
 jobs:
-  clean:
+  monthly-report:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -26,18 +26,19 @@ jobs:
         python-version: '3.x'
     - name: Install dependencies
       run: pip install -r requirements.txt
-    - name: Run Clean
+    - name: Generate Monthly Report
       env:
         YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      run: python clean.py
-    
-    - name: Commit updated files
+        ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+        EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+      run: python monthly_report.py
+    - name: Commit monthly report
       env:
         REPO: "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git remote set-url origin $REPO
-        git add collect_channels.csv monitor_channels.csv history/
-        git diff-index --quiet HEAD || git commit -m "Clean inactive channels [skip ci]"
+        git add reports/
+        git diff-index --quiet HEAD || git commit -m "Add monthly report [skip ci]"
         git push

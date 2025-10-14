@@ -10,7 +10,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from config import API_KEY, PROXY, REQUEST_TIMEOUT, HISTORY_DIR, MAX_HISTORY_RECORDS,LOG_LEVEL
+from config import API_KEY, PROXY, REQUEST_TIMEOUT, HISTORY_DIR, MAX_HISTORY_RECORDS,LOG_LEVEL,MONITOR_FILE,COLLECT_FILE
 
 # 初始化日志
 def setup_logger():
@@ -134,7 +134,7 @@ def read_channel_list(path: str):
     # 确保必要的列存在
     for col in ["name", "url"]:
         if col not in df.columns:
-            raise ValueError(f"channels.csv 必须包含列: {col}")
+            raise ValueError(f"csv 必须包含列: {col}")
     
     # 初始化缺失的列
     if "current_subs" not in df.columns:
@@ -286,19 +286,20 @@ def is_short_video_channel(channel_id: str, max_duration: int = 60) -> bool:
         return False
 
 # ---------- 新增：频道数据写入函数 ----------
-def append_channel_to_csv(channel_data, csv_file="channels.csv"):
+def append_channel_to_csv(channel_data, csv_file="collect_channels.csv", check_duplicate=True):
     """
-    将频道数据追加到CSV文件，并确保不重复添加相同频道
+    将频道数据追加到CSV文件，确保不重复添加相同频道
     :param channel_data: 字典，包含频道信息
     :param csv_file: CSV文件路径
+    :param check_duplicate: 是否检查重复
     """
     ensure_dirs()
     
     # 检查文件是否存在，决定是否写入表头
     file_exists = os.path.isfile(csv_file)
     
-    # 如果文件存在，检查是否已存在相同频道
-    if file_exists:
+    # 如果文件存在且需要检查重复，检查是否已存在相同频道
+    if file_exists and check_duplicate:
         try:
             # 读取现有数据
             existing_df = safe_read_csv(csv_file)
@@ -308,7 +309,7 @@ def append_channel_to_csv(channel_data, csv_file="channels.csv"):
             if channel_id and not existing_df.empty and "id" in existing_df.columns:
                 if channel_id in existing_df["id"].values:
                     logger.info(f"频道已存在，跳过: {channel_data.get('name', '未知')} ({channel_id})")
-                    return
+                    return False  # 返回False表示未添加
         except Exception as e:
             logger.warning(f"读取现有频道文件失败: {e}")
     
@@ -339,6 +340,76 @@ def append_channel_to_csv(channel_data, csv_file="channels.csv"):
         writer.writerow(channel_data)
     
     logger.info(f"已添加频道到 {csv_file}: {channel_data.get('name', '未知')}")
+    return True  # 返回True表示成功添加
+
+# 新增函数：添加频道到监控列表（仅长视频）
+def add_to_monitor_if_long_video(channel_data):
+    """
+    如果频道是长视频，则添加到监控列表
+    """
+    # 检查是否为短视频
+    is_short = channel_data.get("short_video", False)
+    
+    if not is_short:
+        # 添加到监控列表
+        success = append_channel_to_csv(
+            channel_data, 
+            csv_file=MONITOR_FILE, 
+            check_duplicate=True
+        )
+        if success:
+            logger.info(f"已添加到监控列表: {channel_data.get('name', '未知')}")
+        return success
+    else:
+        logger.info(f"跳过短视频频道，不添加到监控列表: {channel_data.get('name', '未知')}")
+        return False
+
+# 新增函数：从收藏列表同步长视频到监控列表
+def sync_long_videos_to_monitor():
+    """
+    从收藏列表同步所有长视频频道到监控列表
+    """
+    try:
+        collect_df = safe_read_csv(COLLECT_FILE)
+        if collect_df.empty:
+            logger.warning("收藏列表为空")
+            return 0
+        
+        # 过滤长视频频道
+        long_video_df = collect_df[collect_df["short_video"] == False]
+        
+        if long_video_df.empty:
+            logger.info("没有长视频频道需要同步")
+            return 0
+        
+        # 读取现有监控列表
+        monitor_df = safe_read_csv(MONITOR_FILE)
+        
+        # 找出需要添加的频道（在收藏列表中但不在监控列表中）
+        if not monitor_df.empty and "id" in monitor_df.columns:
+            existing_ids = set(monitor_df["id"].values)
+            new_channels = long_video_df[~long_video_df["id"].isin(existing_ids)]
+        else:
+            new_channels = long_video_df
+        
+        # 添加到监控列表
+        added_count = 0
+        for _, row in new_channels.iterrows():
+            channel_data = row.to_dict()
+            success = append_channel_to_csv(
+                channel_data, 
+                csv_file=MONITOR_FILE, 
+                check_duplicate=False  # 已经检查过了
+            )
+            if success:
+                added_count += 1
+        
+        logger.info(f"同步完成: 新增 {added_count} 个长视频频道到监控列表")
+        return added_count
+        
+    except Exception as e:
+        logger.error(f"同步长视频频道失败: {e}")
+        return 0
 
 
 @retry(Exception, tries=3, delay=1, backoff=2)
@@ -357,7 +428,7 @@ def is_short_video_channel_from_playboard(item_data: dict, max_duration: int = 1
             
         video_ids = [video.get("videoId") for video in videos if video.get("videoId")]
         if not video_ids:
-            return False
+            return True
             
         # 获取视频详情
         video_resp = youtube.videos().list(
@@ -411,4 +482,3 @@ def parse_duration_to_seconds(duration: str) -> int:
         seconds = int(time_str.split("S")[0])
     
     return hours * 3600 + minutes * 60 + seconds
-

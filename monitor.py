@@ -3,7 +3,7 @@ import time
 import pandas as pd
 from datetime import datetime
 from googleapiclient.errors import HttpError
-from config import CHANNEL_FILE,HISTORY_DIR, MIN_GROWTH_RATE, MIN_INACTIVE_DAYS, GROWTH_THRESHOLD, FILTER_SHORT_VIDEOS
+from config import HISTORY_DIR, MIN_GROWTH_RATE, MIN_INACTIVE_DAYS, GROWTH_THRESHOLD, FILTER_SHORT_VIDEOS,MONITOR_FILE
 from utils import youtube, read_channel_list, write_atomic_csv, parse_channel_id, logger
 from utils import retry, append_history, get_channel_history
 from notifier import send_alert
@@ -31,7 +31,7 @@ def get_subs_via_api(channel_id: str) -> int:
 # 更新频道数据
 def update_channel_data():
     try:
-        df = read_channel_list(CHANNEL_FILE)
+        df = read_channel_list(MONITOR_FILE)
         # 确保有short_video列
         if "short_video" not in df.columns:
             df["short_video"] = False
@@ -86,20 +86,20 @@ def update_channel_data():
         logger.info(f"{name} ({channel_id}): {prev_current} -> {current_subs} Δ={growth} ({growth_rate:.2f}%)")
         
         # 检查增长率是否超过阈值
-        if growth_rate >= MIN_GROWTH_RATE:
-            send_alert(channel_id, name, prev_current, current_subs, growth_rate)
+        # if growth_rate >= MIN_GROWTH_RATE:
+        #     send_alert(channel_id, name, prev_current, current_subs, growth_rate)
         
         time.sleep(1.2)  # 避免请求过快
         updated = True
     
     if updated:
-        write_atomic_csv(CHANNEL_FILE, df)
+        write_atomic_csv(MONITOR_FILE, df)
     logger.info("频道数据更新完成")
 
 # 移除不活跃频道
 def remove_inactive_channels():
     try:
-        df = read_channel_list(CHANNEL_FILE)
+        df = read_channel_list(MONITOR_FILE)
         # 确保有short_video列
         if "short_video" not in df.columns:
             df["short_video"] = False
@@ -145,7 +145,7 @@ def remove_inactive_channels():
         
         # 从主列表中移除
         df = df[~df["id"].isin(remove_ids)]
-        write_atomic_csv(CHANNEL_FILE, df)
+        write_atomic_csv(MONITOR_FILE, df)
         
         # 删除历史文件
         for cid in remove_ids:
