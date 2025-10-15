@@ -2,7 +2,7 @@ name: Update Channels
 
 on:
   schedule:
-    - cron: '0 0 * * *' #每天凌晨00:00（午夜）执行一次
+    - cron: '0 2 * * *' #每天凌晨02:00执行一次
   workflow_dispatch:
 
 jobs:

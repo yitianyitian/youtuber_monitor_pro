@@ -2,7 +2,7 @@ name: Collect Channels
 
 on:
   schedule:
-    - cron: '0 0 * * 0' #每周日的凌晨00:00（午夜）执行一次
+    - cron: '0 0 * * *' #每日的凌晨00:00（午夜）执行一次
   workflow_dispatch:
 
 jobs:
