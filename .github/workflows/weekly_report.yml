@@ -1,13 +1,12 @@
-# monthly_report.yml
-name: Monthly Report
+name: Weekly Report
 
 on:
   schedule:
-    #- cron: '0 8 1 * *'  # 每月1日上午8点 UTC
-  workflow_dispatch:  # 允许手动触发
+    - cron: '0 3 * * 0'  # 每周日凌晨3点 UTC
+  workflow_dispatch:
 
 jobs:
-  monthly-report:
+  weekly-report:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -26,13 +25,13 @@ jobs:
         python-version: '3.x'
     - name: Install dependencies
       run: pip install -r requirements.txt
-    - name: Generate Monthly Report
+    - name: Generate Weekly Report
       env:
         YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
         EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
-      run: python monthly_report.py
-    - name: Commit monthly report
+      run: python weekly_report.py
+    - name: Commit weekly report
       env:
         REPO: "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
       run: |
@@ -40,5 +39,5 @@ jobs:
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git remote set-url origin $REPO
         git add reports/
-        git diff-index --quiet HEAD || git commit -m "Add monthly report [skip ci]"
+        git diff-index --quiet HEAD || git commit -m "Add weekly report [skip ci]"
         git push
