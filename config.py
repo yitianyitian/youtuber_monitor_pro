@@ -28,7 +28,7 @@ MIN_HOT_RATIO = float(os.getenv("MIN_HOT_RATIO", "0.2"))
 CACHE_DAYS = int(os.getenv("CACHE_DAYS", "3"))
 
 # 不活跃频道配置
-MIN_INACTIVE_DAYS = int(os.getenv("MIN_INACTIVE_DAYS", "30"))
+MIN_INACTIVE_DAYS = int(os.getenv("MIN_INACTIVE_DAYS", "7"))
 GROWTH_THRESHOLD = float(os.getenv("GROWTH_THRESHOLD", "0.01"))
 
 # 日志配置

@@ -3,7 +3,8 @@ name: Clean Inactive Channels
 
 on:
   schedule:
-    - cron: '0 12 2 * *' # 每月2日中午12:00执行，确保在月度报告之后
+    #- cron: '0 12 2 * *' # 每月2日中午12:00执行，确保在月度报告之后
+    - cron: '0 4 * * 0' #每周日的凌晨 4 点（UTC 时间）执行一次任务。
   workflow_dispatch:
 
 jobs:
