@@ -121,13 +121,13 @@ def fetch_by_country(country: str, config: FetchConfig, max_pages=3):
                         "subscribers": subscriberCount,
                     }
                     
-                    # 检测是否为短视频频道,search.list()大量消耗配额，一次至多只能检测95个频道，弃用
-                    # is_short = is_short_video_channel(channelId)
-                    # print(f"{ch.get('name')} ({channelId}): 短视频频道 - {is_short}")
-
-                    # 使用Playboard提供的视频ID进行检测
-                    is_short = is_short_video_channel_from_playboard(item, max_duration=180)
+                    # 检测是否为短视频频道
+                    is_short = is_short_video_channel(channelId)
                     print(f"{ch.get('name')} ({channelId}): 短视频频道 - {is_short}")
+
+                    # 使用Playboard提供的视频ID进行检测,使用优化后的is_short_video_channel检测
+                    # is_short = is_short_video_channel_from_playboard(item, max_duration=180)
+                    # print(f"{ch.get('name')} ({channelId}): 短视频频道 - {is_short}")
                     
                     # 准备写入 channel.csv 的数据
                     channel_data = {
@@ -183,18 +183,20 @@ def get_country_config():
     """
     return {
         # 一级市场：高密度+高增长，拉取3页
-        "US": (3, 3), "BR": (3, 3), "IN": (3, 3), "MX": (3, 3), 
-        "JP": (3, 3), "KR": (3, 3), "GB": (3, 3), "DE": (3, 3),
+        "US": (3, 5), 
+        "BR": (3, 3), "MX": (3, 3), 
+        "JP": (3, 3), "KR": (3, 3), "GB": (3, 3), #(3*5+5)*20
         
         # 二级市场：中等密度，拉取2页
-        "FR": (2, 2), "ES": (2, 2), "IT": (2, 2), "ID": (2, 2),
-        "PH": (2, 2), "TH": (2, 2), "TR": (2, 2), "PL": (2, 2),
+        "DE": (2, 2), "FR": (2, 2), "ES": (2, 2), "IT": (2, 2),
+        "AU": (2, 2), "CA": (2, 2),
         "AR": (2, 2), "CO": (2, 2), "CL": (2, 2), "PE": (2, 2),
+        "ID": (2, 2), "TH": (2, 2), "MY": (2, 2), "SG": (2, 2),"TW": (2, 2), "HK": (2, 2), #16*20
         
         # 三级市场：低密度但有潜力，拉取1页
-        "NL": (1, 1), "SE": (1, 1), "AU": (1, 1), "CA": (1, 1),
-        "ZA": (1, 1), "MY": (1, 1), "SG": (1, 1), "AE": (1, 1),
-        "VN": (1, 1), "EG": (1, 1), "SA": (1, 1)
+        "NL": (1, 1), "SE": (1, 1),
+        "IN": (1, 1), "VN" :(1, 1),
+        "ZA": (1, 1), "TR": (1, 1), "PL": (1, 1), #7*20
     }
 
 

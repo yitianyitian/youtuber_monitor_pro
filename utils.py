@@ -223,58 +223,108 @@ def deduplicate_csv(input_file: str, output_file: str, column_name: str, keep: s
     print(f"去重完成，共 {len(df_unique)} 条记录，已保存至 {output_file}")
 
 
+
+def parse_duration_to_seconds(duration: str) -> int:
+    """
+    将ISO 8601时长格式转换为秒数
+    :param duration: ISO 8601格式的时长字符串
+    :return: 总秒数
+    """
+    if not duration.startswith("PT"):
+        return 0
+        
+    time_str = duration[2:]
+    hours = 0
+    minutes = 0
+    seconds = 0
+    
+    if "H" in time_str:
+        hours = int(time_str.split("H")[0])
+        time_str = time_str.split("H")[1] if "H" in time_str else ""
+    if "M" in time_str:
+        minutes = int(time_str.split("M")[0])
+        time_str = time_str.split("M")[1] if "M" in time_str else ""
+    if "S" in time_str:
+        seconds = int(time_str.split("S")[0])
+    
+    return hours * 3600 + minutes * 60 + seconds
+
 # ---------- 新增：短视频检测函数 ----------
 @retry(Exception, tries=3, delay=1, backoff=2)
-def is_short_video_channel(channel_id: str, max_duration: int = 60) -> bool:
+def is_short_video_channel(channel_id: str, max_duration: int = 60, max_videos: int = 50) -> bool:
     """
     检测频道是否为短视频频道
     :param channel_id: YouTube频道ID
     :param max_duration: 短视频最大时长（秒）
+    :param max_videos: 检测的最大视频数量
     :return: 是否为短视频频道
     """
     try:
-        # 获取频道最新视频
-        resp = youtube.search().list(
-            part="snippet",
-            channelId=channel_id,
-            maxResults=5,  # 检查最近5个视频
-            order="date",
-            type="video"
+        # 1. 获取频道的uploads播放列表ID（配额消耗：1）
+        channel_resp = youtube.channels().list(
+            part="contentDetails",
+            id=channel_id
         ).execute()
         
-        video_ids = [item["id"]["videoId"] for item in resp.get("items", []) if "videoId" in item["id"]]
-
+        if not channel_resp.get("items"):
+            return False
+            
+        uploads_playlist_id = channel_resp["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+        
+        # 2. 获取播放列表中的视频（配额消耗：1，分页获取最多50个）
+        video_ids = []
+        next_page_token = None
+        
+        while len(video_ids) < max_videos:
+            # 计算本次请求需要获取的视频数量
+            remaining = max_videos - len(video_ids)
+            max_results = min(50, remaining)  # 单次最多50个
+            
+            playlist_resp = youtube.playlistItems().list(
+                part="contentDetails",
+                playlistId=uploads_playlist_id,
+                maxResults=max_results,
+                pageToken=next_page_token
+            ).execute()
+            
+            # 提取视频ID
+            batch_ids = [item["contentDetails"]["videoId"] for item in playlist_resp.get("items", [])]
+            video_ids.extend(batch_ids)
+            
+            # 检查是否有更多页面
+            next_page_token = playlist_resp.get("nextPageToken")
+            if not next_page_token:
+                break  # 没有更多视频了
+        
         if not video_ids:
             return False
             
-        # 获取视频详情
-        video_resp = youtube.videos().list(
-            part="contentDetails",
-            id=",".join(video_ids)
-        ).execute()
-        
-        # 检查视频时长
+        # 3. 批量获取视频详情（配额消耗：1，分批次处理）
         short_video_count = 0
-        for item in video_resp.get("items", []):
-            duration = item["contentDetails"]["duration"]
-            # 解析ISO 8601时长格式
-            if duration.startswith("PT"):
-                time_str = duration[2:]
-                minutes = 0
-                seconds = 0
-                
-                if "M" in time_str:
-                    minutes = int(time_str.split("M")[0])
-                    time_str = time_str.split("M")[1] if "M" in time_str else time_str
-                if "S" in time_str:
-                    seconds = int(time_str.split("S")[0])
-                
-                total_seconds = minutes * 60 + seconds
+        total_videos = len(video_ids)
+        
+        # 每次最多处理50个视频（API限制）
+        for i in range(0, total_videos, 50):
+            batch_ids = video_ids[i:i+50]
+            
+            video_resp = youtube.videos().list(
+                part="contentDetails",
+                id=",".join(batch_ids)
+            ).execute()
+            
+            # 检查视频时长
+            for item in video_resp.get("items", []):
+                duration = item["contentDetails"]["duration"]
+                total_seconds = parse_duration_to_seconds(duration)
                 if total_seconds <= max_duration:
                     short_video_count += 1
         
+        print(short_video_count,total_videos)
         # 如果大多数视频都是短视频，则标记为短视频频道
-        return short_video_count >= 3  # 5个中有3个以上是短视频
+        # 阈值设为60%的视频是短视频
+        threshold = max(3, int(total_videos * 0.6))  # 至少3个，或者60%的视频
+        return short_video_count >= threshold
+        
     except HttpError as e:
         if e.resp.status == 403:
             logger.error("API配额耗尽或密钥无效")
@@ -457,28 +507,3 @@ def is_short_video_channel_from_playboard(item_data: dict, max_duration: int = 1
     except Exception as e:
         logger.warning(f"检测短视频频道失败: {e}")
         return False
-
-def parse_duration_to_seconds(duration: str) -> int:
-    """
-    将ISO 8601时长格式转换为秒数
-    :param duration: ISO 8601格式的时长字符串
-    :return: 总秒数
-    """
-    if not duration.startswith("PT"):
-        return 0
-        
-    time_str = duration[2:]
-    hours = 0
-    minutes = 0
-    seconds = 0
-    
-    if "H" in time_str:
-        hours = int(time_str.split("H")[0])
-        time_str = time_str.split("H")[1] if "H" in time_str else ""
-    if "M" in time_str:
-        minutes = int(time_str.split("M")[0])
-        time_str = time_str.split("M")[1] if "M" in time_str else ""
-    if "S" in time_str:
-        seconds = int(time_str.split("S")[0])
-    
-    return hours * 3600 + minutes * 60 + seconds
