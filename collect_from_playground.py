@@ -95,12 +95,10 @@ def fetch_by_country(country: str, config: FetchConfig, max_pages=3):
         }
         if cursor:
             params['cursor']=cursor
-        print(params)
         try:
             resp = requests.get(BASE_URL, headers=HEADERS, params=params, timeout=10, proxies=PROXIES)
             resp.raise_for_status()
             data = resp.json()
-            print(data)
             items = data.get("list", [])
             if not items:
                 print(f"[End] {country} 没有更多数据")
