@@ -251,7 +251,7 @@ def parse_duration_to_seconds(duration: str) -> int:
 
 # ---------- 新增：短视频检测函数 ----------
 @retry(Exception, tries=3, delay=1, backoff=2)
-def is_short_video_channel(channel_id: str, max_duration: int = 60, max_videos: int = 50) -> bool:
+def is_short_video_channel(channel_id: str, max_duration: int = 120, max_videos: int = 50) -> bool:
     """
     检测频道是否为短视频频道
     :param channel_id: YouTube频道ID
