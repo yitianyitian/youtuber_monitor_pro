@@ -1,0 +1,5 @@
+[Error] US Page 1 - dict contains fields not in fieldnames: 'long_video_avg_views', 'long_video_avg_interaction_rate', 'update_frequency_days'
+[Error] BR Page 2 - dict contains fields not in fieldnames: 'long_video_avg_views', 'long_video_avg_interaction_rate', 'update_frequency_days'
+[Error] MX Page 1 - dict contains fields not in fieldnames: 'long_video_avg_views', 'long_video_avg_interaction_rate', 'update_frequency_days'
+[Error] US Page 1 - dict contains fields not in fieldnames: 'update_frequency_days', 'long_video_avg_interaction_rate', 'long_video_avg_views'
+[Error] US Page 1 - [Errno 13] Permission denied: 'monitor_channels.csv'
