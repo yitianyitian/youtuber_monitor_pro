@@ -561,10 +561,8 @@ def append_channel_to_csv(channel_data, csv_file="collect_channels.csv", check_d
     
     with open(csv_file, "a", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=required_columns)
-        
         if not file_exists:
-            writer.writeheader()
-        
+            writer.writeheader()       
         writer.writerow(channel_data)
     
     logger.info(f"已添加频道到 {csv_file}: {channel_data.get('name', '未知')}")

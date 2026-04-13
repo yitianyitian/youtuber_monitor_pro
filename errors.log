@@ -3,3 +3,30 @@
 [Error] MX Page 1 - dict contains fields not in fieldnames: 'long_video_avg_views', 'long_video_avg_interaction_rate', 'update_frequency_days'
 [Error] US Page 1 - dict contains fields not in fieldnames: 'update_frequency_days', 'long_video_avg_interaction_rate', 'long_video_avg_views'
 [Error] US Page 1 - [Errno 13] Permission denied: 'monitor_channels.csv'
+[Error] DE Page 2 - 'NoneType' object has no attribute 'get'
+[RequestError] FR Page 2 - HTTPSConnectionPool(host='lapi.playboard.co', port=443): Max retries exceeded with url: /v1/chart/channel?locale=en&countryCode=FR&period=1775952000&size=20&chartTypeId=10&periodTypeId=2&indexDimensionId=31&indexTypeId=1&indexTarget=FR&indexCountryCode=FR&cursor=0625fa471a165f61a00c31d7c64cb19f%3Afcac59a5a76e9daa89e2142f908069000c0c2f081747170a95b57409b2028b7802fdde305c63565341d0f97a37ca4eeca7997668aff4cfeae10d4ddc9c422342 (Caused by ProxyError('Cannot connect to proxy.', timeout('_ssl.c:1112: The handshake operation timed out')))
+[Error] ES Page 1 - 'NoneType' object has no attribute 'get'
+[Error] AR Page 1 - 'NoneType' object has no attribute 'get'
+[Error] TH Page 2 - 'NoneType' object has no attribute 'get'
+[Error] MY Page 2 - 'NoneType' object has no attribute 'get'
+[Error] SG Page 1 - 'NoneType' object has no attribute 'get'
+[Error] TW Page 1 - 'NoneType' object has no attribute 'get'
+[Error] NL Page 1 - 'NoneType' object has no attribute 'get'
+[RequestError] IN Page 1 - HTTPSConnectionPool(host='lapi.playboard.co', port=443): Max retries exceeded with url: /v1/chart/channel?locale=en&countryCode=IN&period=1775952000&size=20&chartTypeId=10&periodTypeId=2&indexDimensionId=31&indexTypeId=1&indexTarget=IN&indexCountryCode=IN (Caused by ProxyError('Cannot connect to proxy.', timeout('_ssl.c:1112: The handshake operation timed out')))
+[RequestError] VN Page 1 - HTTPSConnectionPool(host='lapi.playboard.co', port=443): Max retries exceeded with url: /v1/chart/channel?locale=en&countryCode=VN&period=1775952000&size=20&chartTypeId=10&periodTypeId=2&indexDimensionId=31&indexTypeId=1&indexTarget=VN&indexCountryCode=VN (Caused by ProxyError('Cannot connect to proxy.', timeout('_ssl.c:1112: The handshake operation timed out')))
+[RequestError] ZA Page 1 - HTTPSConnectionPool(host='lapi.playboard.co', port=443): Max retries exceeded with url: /v1/chart/channel?locale=en&countryCode=ZA&period=1775952000&size=20&chartTypeId=10&periodTypeId=2&indexDimensionId=31&indexTypeId=1&indexTarget=ZA&indexCountryCode=ZA (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1129)')))
+[Error] TR Page 1 - 'NoneType' object has no attribute 'get'
+[Error] US Page 1 - 'NoneType' object has no attribute 'get'
+[RequestError] JP Page 1 - HTTPSConnectionPool(host='lapi.playboard.co', port=443): Max retries exceeded with url: /v1/chart/channel?locale=en&countryCode=JP&period=1775952000&size=20&chartTypeId=10&periodTypeId=2&indexDimensionId=31&indexTypeId=1&indexTarget=JP&indexCountryCode=JP (Caused by ProxyError('Cannot connect to proxy.', timeout('_ssl.c:1112: The handshake operation timed out')))
+[Error] US Page 3 - 'NoneType' object has no attribute 'get'
+[Error] DE Page 2 - 'NoneType' object has no attribute 'get'
+[Error] FR Page 2 - 'NoneType' object has no attribute 'get'
+[Error] ES Page 1 - 'NoneType' object has no attribute 'get'
+[Error] IT Page 2 - 'NoneType' object has no attribute 'get'
+[RequestError] CA Page 1 - HTTPSConnectionPool(host='lapi.playboard.co', port=443): Max retries exceeded with url: /v1/chart/channel?locale=en&countryCode=CA&period=1775952000&size=20&chartTypeId=10&periodTypeId=2&indexDimensionId=31&indexTypeId=1&indexTarget=CA&indexCountryCode=CA (Caused by ProxyError('Cannot connect to proxy.', timeout('_ssl.c:1112: The handshake operation timed out')))
+[Error] AR Page 1 - 'NoneType' object has no attribute 'get'
+[Error] CL Page 1 - 'NoneType' object has no attribute 'get'
+[Error] TH Page 2 - 'NoneType' object has no attribute 'get'
+[Error] MY Page 2 - 'NoneType' object has no attribute 'get'
+[Error] SG Page 2 - 'NoneType' object has no attribute 'get'
+[Error] ZA Page 1 - 'NoneType' object has no attribute 'get'

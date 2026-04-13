@@ -122,7 +122,6 @@ def fetch_by_country(country: str, config: FetchConfig, max_pages=3):
                     # 检测是否为短视频频道
                     #is_short = is_short_video_channel(channelId)
                     metrics=get_channel_video_metrics(channelId)
-                    print(metrics)
                     is_short=metrics.get('short_video_avg_views')>0.6
                     print(f"{ch.get('name')} ({channelId}): 短视频频道 - {is_short}")
 
@@ -202,6 +201,7 @@ def get_country_config():
         "IN": (1, 1), "VN" :(1, 1),
         "ZA": (1, 1), "TR": (1, 1), "PL": (1, 1), #7*20
     }
+
 
 
 def collect_from_playground():
