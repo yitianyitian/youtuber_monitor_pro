@@ -144,7 +144,10 @@ def generate_report(days: int = 7, report_type: str = "weekly"):
                     f'{period_name}增长率%': round(growth_rate, 2),
                     '质量评分': quality_score,
                     '数据天数': data_days,
-                    '更新时间': row.get('update_time', '')
+                    '更新时间': row.get('update_time', ''),
+                    '长视频平均播放数':row.get('long_video_avg_views',0),
+                    '长视频互动率':row.get('long_video_avg_interaction_rate',0),
+                    '更新频率(1/天)':row.get('update_frequency_days',0)
                 })
         
         logger.info(f"{period_name}度报告处理完成: 总计{total_processed}个频道, 有效{valid_channels}个, 符合条件{len(report_data)}个")

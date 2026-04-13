@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from config import API_KEY, PROXY, REQUEST_TIMEOUT, HISTORY_DIR, MAX_HISTORY_RECORDS,LOG_LEVEL,MONITOR_FILE,COLLECT_FILE
+from typing import Dict, List, Optional, Tuple
 
 # 初始化日志
 def setup_logger():
@@ -335,6 +336,182 @@ def is_short_video_channel(channel_id: str, max_duration: int = 120, max_videos:
         logger.warning(f"检测短视频频道失败: {channel_id} - {e}")
         return False
 
+def calculate_interaction_rate(views: int, likes: int, comments: int) -> float:
+    """计算互动率 = (点赞数 + 评论数) / 播放数，若播放数为0则返回0"""
+    if views == 0:
+        return 0.0
+    return (likes + comments) / views
+
+@retry(Exception, tries=3, delay=1, backoff=2)
+def get_channel_video_metrics(
+    channel_id: str,
+    max_duration: int = 120,
+    max_videos: int = 50
+) -> Optional[Dict]:
+    """
+    获取YouTube频道的视频统计指标
+    :param channel_id: YouTube频道ID
+    :param max_duration: 短视频最大时长（秒），用于区分长/短视频
+    :param max_videos: 检测的最大视频数量
+    :return: 包含各项指标的字典，若失败或无视频则返回None
+    """
+    try:
+        # 1. 获取频道的uploads播放列表ID（配额消耗：1）
+        channel_resp = youtube.channels().list(
+            part="contentDetails",
+            id=channel_id
+        ).execute()
+        
+        if not channel_resp.get("items"):
+            logger.warning(f"频道不存在: {channel_id}")
+            return None
+            
+        uploads_playlist_id = channel_resp["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+        
+        # 2. 获取播放列表中的视频ID及发布时间（最多max_videos个）
+        video_metadata = []  # 每个元素为 (video_id, published_at)
+        next_page_token = None
+        
+        while len(video_metadata) < max_videos:
+            remaining = max_videos - len(video_metadata)
+            max_results = min(50, remaining)
+            
+            playlist_resp = youtube.playlistItems().list(
+                part="contentDetails,snippet",
+                playlistId=uploads_playlist_id,
+                maxResults=max_results,
+                pageToken=next_page_token
+            ).execute()
+            
+            for item in playlist_resp.get("items", []):
+                video_id = item["contentDetails"]["videoId"]
+                published_at = item["snippet"]["publishedAt"]  # ISO 8601格式
+                video_metadata.append((video_id, published_at))
+            
+            next_page_token = playlist_resp.get("nextPageToken")
+            if not next_page_token:
+                break
+        
+        if not video_metadata:
+            logger.info(f"频道无视频: {channel_id}")
+            return None
+        
+        # 3. 批量获取视频的时长、播放数、点赞数、评论数
+        video_details = []  # 每个元素: (duration_sec, views, likes, comments, published_at)
+        total_videos = len(video_metadata)
+        
+        # 每次最多处理50个视频（API限制）
+        for i in range(0, total_videos, 50):
+            batch = video_metadata[i:i+50]
+            batch_ids = [vid for vid, _ in batch]
+            
+            video_resp = youtube.videos().list(
+                part="contentDetails,statistics",
+                id=",".join(batch_ids)
+            ).execute()
+            
+            # 建立id到published_at的映射
+            pub_map = {vid: pub for vid, pub in batch}
+            
+            for item in video_resp.get("items", []):
+                video_id = item["id"]
+                duration_sec = parse_duration_to_seconds(item["contentDetails"]["duration"])
+                stats = item.get("statistics", {})
+                views = int(stats.get("viewCount", 0))
+                likes = int(stats.get("likeCount", 0))
+                comments = int(stats.get("commentCount", 0))
+                published_at = pub_map.get(video_id)
+                
+                video_details.append({
+                    "duration": duration_sec,
+                    "views": views,
+                    "likes": likes,
+                    "comments": comments,
+                    "published_at": published_at
+                })
+        
+        if not video_details:
+            return None
+        
+        # 4. 分类统计：长视频 vs 短视频
+        long_videos = []   # 时长 > max_duration
+        short_videos = []  # 时长 <= max_duration
+        
+        for v in video_details:
+            if v["duration"] <= max_duration:
+                short_videos.append(v)
+            else:
+                long_videos.append(v)
+        
+        # 辅助函数：计算列表的平均值
+        def avg_views(video_list):
+            if not video_list:
+                return 0.0
+            return sum(v["views"] for v in video_list) / len(video_list)
+        
+        def avg_interaction_rate(video_list):
+            if not video_list:
+                return 0.0
+            total_rate = 0.0
+            for v in video_list:
+                rate = calculate_interaction_rate(v["views"], v["likes"], v["comments"])
+                total_rate += rate
+            return total_rate / len(video_list)
+        
+        def avg_duration(video_list):
+            if not video_list:
+                return 0.0
+            return sum(v["duration"] for v in video_list) / len(video_list)
+        
+        # 5. 计算更新频率：平均间隔天数
+        # 按发布时间升序排序（最早的在前）
+        sorted_by_date = sorted(video_details, key=lambda x: x["published_at"] if x["published_at"] else "")
+        if sorted_by_date and sorted_by_date[0]["published_at"] and sorted_by_date[-1]["published_at"]:
+            first_date = datetime.fromisoformat(sorted_by_date[0]["published_at"].replace('Z', '+00:00'))
+            last_date = datetime.fromisoformat(sorted_by_date[-1]["published_at"].replace('Z', '+00:00'))
+            days_span = (last_date - first_date).days
+            if days_span > 0:
+                update_freq_days = days_span / (len(sorted_by_date) - 1)  # 平均间隔
+            else:
+                update_freq_days = 0.0
+        else:
+            update_freq_days = None
+        
+        # 6. 构建返回结果
+        total_count = len(video_details)
+        long_count = len(long_videos)
+        short_count = len(short_videos)
+        
+        result = {
+            "channel_id": channel_id,
+            "total_videos_analyzed": total_count,
+            "long_video_count": long_count,
+            "short_video_count": short_count,
+            "long_video_ratio": long_count / total_count if total_count > 0 else 0.0,
+            "short_video_ratio": short_count / total_count if total_count > 0 else 0.0,
+            "long_video_avg_views": avg_views(long_videos),
+            "short_video_avg_views": avg_views(short_videos),
+            "long_video_avg_interaction_rate": avg_interaction_rate(long_videos),#长视频互动率
+            "short_video_avg_interaction_rate": avg_interaction_rate(short_videos),#短视频互动率
+            "overall_avg_duration_seconds": avg_duration(video_details),#整体平均时长
+            "overall_avg_views": avg_views(video_details),
+            "overall_avg_interaction_rate": avg_interaction_rate(video_details),
+            "update_frequency_days": update_freq_days,  # 平均每几天发布一个视频
+        }
+        
+        logger.info(f"频道 {channel_id} 统计完成: 总视频数={total_count}, 长视频占比={result['long_video_ratio']:.2%}")
+        return result
+        
+    except HttpError as e:
+        if e.resp.status == 403:
+            logger.error("API配额耗尽或密钥无效")
+        else:
+            logger.warning(f"API 获取视频信息失败: {channel_id} - {e}")
+        return None
+    except Exception as e:
+        logger.warning(f"获取频道指标失败: {channel_id} - {e}")
+        return None
+    
 # ---------- 新增：频道数据写入函数 ----------
 def append_channel_to_csv(channel_data, csv_file="collect_channels.csv", check_duplicate=True):
     """
@@ -365,7 +542,8 @@ def append_channel_to_csv(channel_data, csv_file="collect_channels.csv", check_d
     
     # 确保所有必需的列都存在
     required_columns = ["url", "name", "id", "current_subs", "last_subs", 
-                       "growth", "growth_rate", "update_time", "short_video"]
+                       "growth", "growth_rate", "update_time", "short_video",
+                       "long_video_avg_views","long_video_avg_interaction_rate","update_frequency_days"]
     
     # 为缺失的列提供默认值
     for col in required_columns:

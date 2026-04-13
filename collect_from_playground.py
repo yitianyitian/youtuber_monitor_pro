@@ -9,7 +9,7 @@ from datetime import datetime, date, time as dtime, timedelta
 from config import PROXY,COLLECT_FILE
 
 # 新增导入
-from utils import is_short_video_channel, append_channel_to_csv,is_short_video_channel_from_playboard,add_to_monitor_if_long_video
+from utils import is_short_video_channel, append_channel_to_csv,get_channel_video_metrics,add_to_monitor_if_long_video
 
 # Playboard API 基础地址
 BASE_URL = "https://lapi.playboard.co/v1/chart/channel"
@@ -120,7 +120,10 @@ def fetch_by_country(country: str, config: FetchConfig, max_pages=3):
                     }
                     
                     # 检测是否为短视频频道
-                    is_short = is_short_video_channel(channelId)
+                    #is_short = is_short_video_channel(channelId)
+                    metrics=get_channel_video_metrics(channelId)
+                    print(metrics)
+                    is_short=metrics.get('short_video_avg_views')>0.6
                     print(f"{ch.get('name')} ({channelId}): 短视频频道 - {is_short}")
 
                     # 使用Playboard提供的视频ID进行检测,使用优化后的is_short_video_channel检测
@@ -137,7 +140,10 @@ def fetch_by_country(country: str, config: FetchConfig, max_pages=3):
                         "growth": 0,
                         "growth_rate": 0,
                         "update_time": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-                        "short_video": is_short
+                        "short_video": is_short,
+                        "long_video_avg_views":metrics.get('long_video_avg_views'),
+                        "long_video_avg_interaction_rate":metrics.get('long_video_avg_interaction_rate'),
+                        "update_frequency_days":metrics.get('update_frequency_days')
                     }
                     
                     # 1. 总是添加到收藏列表
