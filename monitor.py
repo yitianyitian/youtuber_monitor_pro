@@ -35,6 +35,21 @@ def update_channel_data():
         # 确保有short_video列
         if "short_video" not in df.columns:
             df["short_video"] = False
+        
+        # 确保数值列有正确的数据类型
+        # 转换所有数值列为浮点数或整数
+        if "growth_rate" in df.columns:
+            df["growth_rate"] = df["growth_rate"].astype(float)
+        else:
+            df["growth_rate"] = 0.0
+            
+        if "current_subs" in df.columns:
+            df["current_subs"] = pd.to_numeric(df["current_subs"], errors='coerce').fillna(0).astype(int)
+        if "last_subs" in df.columns:
+            df["last_subs"] = pd.to_numeric(df["last_subs"], errors='coerce').fillna(0).astype(int)
+        if "growth" in df.columns:
+            df["growth"] = pd.to_numeric(df["growth"], errors='coerce').fillna(0).astype(int)
+            
     except FileNotFoundError:
         logger.error("频道列表文件不存在，请先运行收集器")
         return
