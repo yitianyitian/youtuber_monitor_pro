@@ -445,9 +445,9 @@ def get_channel_video_metrics(
         
         # 辅助函数：计算列表的平均值
         def avg_views(video_list):
-            if not video_list:
-                return 0.0
-            return sum(v["views"] for v in video_list) / len(video_list)
+          if not video_list:
+              return 0.0
+          return round(sum(v["views"] for v in video_list) / len(video_list), 2)
         
         def avg_interaction_rate(video_list):
             if not video_list:
