@@ -447,7 +447,7 @@ def get_channel_video_metrics(
         def avg_views(video_list):
           if not video_list:
               return 0.0
-          return round(sum(v["views"] for v in video_list) / len(video_list), 2)
+          return round(sum(v["views"] for v in video_list) / len(video_list))
         
         def avg_interaction_rate(video_list):
             if not video_list:
@@ -456,12 +456,12 @@ def get_channel_video_metrics(
             for v in video_list:
                 rate = calculate_interaction_rate(v["views"], v["likes"], v["comments"])
                 total_rate += rate
-            return total_rate / len(video_list)
+            return round(total_rate / len(video_list),2)
         
         def avg_duration(video_list):
             if not video_list:
                 return 0.0
-            return sum(v["duration"] for v in video_list) / len(video_list)
+            return round(sum(v["duration"] for v in video_list) / len(video_list),2)
         
         # 5. 计算更新频率：平均间隔天数
         # 按发布时间升序排序（最早的在前）
