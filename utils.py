@@ -543,7 +543,7 @@ def append_channel_to_csv(channel_data, csv_file="collect_channels.csv", check_d
     # 确保所有必需的列都存在
     required_columns = ["url", "name", "id", "current_subs", "last_subs", 
                        "growth", "growth_rate", "update_time", "short_video",
-                       "long_video_avg_views","long_video_avg_interaction_rate","update_frequency_days"]
+                       "long_video_avg_views","long_video_avg_interaction_rate","update_frequency_days","overall_avg_duration_seconds"]
     
     # 为缺失的列提供默认值
     for col in required_columns:

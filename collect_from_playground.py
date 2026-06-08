@@ -142,7 +142,8 @@ def fetch_by_country(country: str, config: FetchConfig, max_pages=3):
                         "short_video": is_short,
                         "long_video_avg_views":metrics.get('long_video_avg_views'),
                         "long_video_avg_interaction_rate":metrics.get('long_video_avg_interaction_rate'),
-                        "update_frequency_days":metrics.get('update_frequency_days')
+                        "update_frequency_days":metrics.get('update_frequency_days'),
+                        "overall_avg_duration_seconds":metrics.get('overall_avg_duration_seconds')
                     }
                     
                     # 1. 总是添加到收藏列表
