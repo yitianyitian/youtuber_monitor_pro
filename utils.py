@@ -346,7 +346,7 @@ def calculate_interaction_rate(views: int, likes: int, comments: int) -> float:
 def get_channel_video_metrics(
     channel_id: str,
     max_duration: int = 120,
-    max_videos: int = 50
+    max_videos: int = 20
 ) -> Optional[Dict]:
     """
     获取YouTube频道的视频统计指标
