@@ -103,8 +103,10 @@ def detect_encoding(file_path):
         return 'utf-8'
 
 # ========== 安全的CSV读取函数 ==========
+import warnings
+
 def safe_read_csv(file_path: str, dtype=None):
-    """安全读取CSV文件，自动处理编码问题"""
+    """安全读取CSV文件，自动处理编码问题及错误行"""
     if not os.path.exists(file_path):
         return pd.DataFrame()
     
@@ -112,13 +114,36 @@ def safe_read_csv(file_path: str, dtype=None):
     logger.debug(f"检测到文件编码: {detected_encoding} for {file_path}")
     
     try:
-        return pd.read_csv(file_path, encoding=detected_encoding, dtype=dtype)
+        # 使用 on_bad_lines='skip' 跳过格式错误的行，避免程序崩溃
+        return pd.read_csv(
+            file_path,
+            encoding=detected_encoding,
+            dtype=dtype,
+            on_bad_lines='skip',   # 跳过坏行，也可设为 'warn' 来打印警告
+            engine='python'        # python引擎更宽容，但速度稍慢；若数据量大可尝试 'c' + 其他设置
+        )
     except UnicodeDecodeError:
         try:
-            return pd.read_csv(file_path, encoding='latin1', dtype=dtype)
-        except:
+            return pd.read_csv(
+                file_path,
+                encoding='latin1',
+                dtype=dtype,
+                on_bad_lines='skip',
+                engine='python'
+            )
+        except Exception:
             logger.warning(f"使用错误恢复模式读取文件: {file_path}")
-            return pd.read_csv(file_path, encoding='utf-8', errors='replace', dtype=dtype)
+            return pd.read_csv(
+                file_path,
+                encoding='utf-8',
+                errors='replace',
+                dtype=dtype,
+                on_bad_lines='skip',
+                engine='python'
+            )
+    except Exception as e:
+        logger.error(f"读取 CSV 文件失败 {file_path}: {e}")
+        return pd.DataFrame()
 
 # ---------- 频道列表操作 ----------
 def read_channel_list(path: str):
@@ -470,8 +495,8 @@ def get_channel_video_metrics(
             first_date = datetime.fromisoformat(sorted_by_date[0]["published_at"].replace('Z', '+00:00'))
             last_date = datetime.fromisoformat(sorted_by_date[-1]["published_at"].replace('Z', '+00:00'))
             days_span = (last_date - first_date).days
-            if days_span > 0:
-                update_freq_days = days_span / (len(sorted_by_date) - 1)  # 平均间隔
+            if days_span > 0 and len(sorted_by_date) > 1:
+                update_freq_days = round(days_span / (len(sorted_by_date) - 1), 2)  # 平均间隔，保留两位小数
             else:
                 update_freq_days = 0.0
         else:
