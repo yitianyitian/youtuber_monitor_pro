@@ -3,8 +3,8 @@ name: Monthly Report
 
 on:
   schedule:
-    #- cron: '0 8 1 * *'  # 每月1日上午8点 UTC
-  workflow_dispatch:  # 允许手动触发
+    - cron: '0 0 0 0 0'  # 永远不会执行的cron
+  workflow_dispatch:
 
 jobs:
   monthly-report:
