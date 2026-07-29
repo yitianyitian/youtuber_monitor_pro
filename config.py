@@ -36,7 +36,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # 添加短视频过滤配置
 FILTER_SHORT_VIDEOS = True  # 是否过滤短视频频道
-SHORT_VIDEO_MAX_DURATION = 60  # 短视频最大时长（秒）
+SHORT_VIDEO_MAX_DURATION = 300  # 短视频最大时长（秒）
 
 # 在config.py中添加
 COLLECT_FILE = os.getenv("COLLECT_FILE", "collect_channels.csv")  # 收藏列表（所有频道）
