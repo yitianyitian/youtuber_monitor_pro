@@ -10,7 +10,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from config import API_KEY, PROXY, REQUEST_TIMEOUT, HISTORY_DIR, MAX_HISTORY_RECORDS,LOG_LEVEL,MONITOR_FILE,COLLECT_FILE
+from config import API_KEY, PROXY, REQUEST_TIMEOUT, HISTORY_DIR, MAX_HISTORY_RECORDS,LOG_LEVEL,MONITOR_FILE,COLLECT_FILE,SHORT_VIDEO_MAX_DURATION
 from typing import Dict, List, Optional, Tuple
 
 # 初始化日志
@@ -370,7 +370,7 @@ def calculate_interaction_rate(views: int, likes: int, comments: int) -> float:
 @retry(Exception, tries=3, delay=1, backoff=2)
 def get_channel_video_metrics(
     channel_id: str,
-    max_duration: int = 120,
+    max_duration: int = SHORT_VIDEO_MAX_DURATION,
     max_videos: int = 20
 ) -> Optional[Dict]:
     """
@@ -506,6 +506,7 @@ def get_channel_video_metrics(
         total_count = len(video_details)
         long_count = len(long_videos)
         short_count = len(short_videos)
+        print(long_videos)
         
         result = {
             "channel_id": channel_id,
